@@ -1,0 +1,34 @@
+{
+    "manifest_version": 3,
+    "name": "Tracker Detector",
+    "description": "Detects web trackers and modifies User-Agent.",
+    "version": "0.0.1",
+    "background": {
+        "service_worker": "/background.js"
+    },
+    "action": {
+        "default_popup": "popup.html"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "/content.js"
+            ]
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "anti-detection.js",
+                "profile1.js",
+                "profile2.js",
+                "profile3.js",
+                "PrivacyGuard-detect-fp-calls.js"
+            ],
+            "matches": ["<all_urls>"]
+        }
+    ]
+}

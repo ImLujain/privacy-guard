@@ -1,0 +1,52 @@
+Tracker Detector Chrome Extension
+
+    Manifest File
+        Defines basic metadata (name, version, description).
+        Specifies background scripts, content scripts, popup, permissions, and other settings.
+
+    Background Scripts (background.ts)
+        Manages user agent switching based on profiles.
+        Fetches and processes the Disconnect.me tracker list.
+        Monitors web requests to detect trackers and store their information.
+        Responds to messages from other parts of the extension to provide tracker data.
+
+    Content Scripts (content.ts)
+        Injects Vue components into web pages.
+        Inserts additional scripts for tracking and data manipulation (like randomization and detection scripts).
+
+    Popup Interface (popup.vue)
+        Provides a user interface as a browser action popup.
+        Displays tracker summary and access insights.
+        Communicates with the background script to receive tracker data.
+        Includes tabs for switching between different views.
+
+    Dashboard View (DashboardView.vue)
+        Displays detailed information about detected trackers.
+        Allows users to select profiles and view respective tracker data.
+        Provides charts and tables for visualizing tracker information.
+        Handles pagination and clearing of stored data.
+
+    Detection Script (PrivacyGuard-detect-fp-calls.js)
+        Monitors access to device information properties.
+        Sends data about property access to the background script.
+
+    Randomization Script (randomize-user-data.js)
+        Randomizes properties like battery level and screen resolution to prevent fingerprinting.
+
+    Vue Components
+        TrackerHandlerComponent.vue: Integrated into web pages via content script.
+        CircleProgressBar.vue: Used in popup for visualizing data.
+
+    Public Assets
+        Icons, additional scripts, and other static assets used by the extension.
+
+    Permissions and Capabilities
+        Network request monitoring.
+        Local storage access.
+        User-agent manipulation.
+        Script injection into web pages.
+
+    Additional Features
+        Handling of different user profiles with distinct user agents.
+        Storage and retrieval of tracker data and settings in Chrome's local storage.
+        Integration with Vue.js for dynamic UI components.
