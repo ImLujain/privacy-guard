@@ -286,6 +286,47 @@ chrome.runtime.onMessage.addListener(
 //     }
 // );
 
+// Handle Ollama API requests from the dashboard (bypass CORS)
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+    if (request.action === "ollamaRequest") {
+        console.log('[Background] Forwarding Ollama request:', request.endpoint);
+
+        const url = request.url;
+        const options = {
+            method: request.method || 'GET',
+            headers: request.headers || {},
+        };
+
+        if (request.body) {
+            options.body = JSON.stringify(request.body);
+        }
+
+        if (request.timeout) {
+            const controller = new AbortController();
+            options.signal = controller.signal;
+            setTimeout(() => controller.abort(), request.timeout);
+        }
+
+        fetch(url, options)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('[Background] Ollama request successful');
+                sendResponse({ success: true, data: data });
+            })
+            .catch(error => {
+                console.error('[Background] Ollama request failed:', error);
+                sendResponse({ success: false, error: error.message });
+            });
+
+        return true; // Keep the message channel open for async response
+    }
+});
+
 function getAccessData() {
     return accessData;
 }

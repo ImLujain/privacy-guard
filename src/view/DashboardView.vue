@@ -89,6 +89,7 @@
                         <span class="section-icon">🤖</span>
                         <h2 class="section-title">Privacy Insights</h2>
                         <span id="ai-badge" class="ai-badge">AI Powered</span>
+                        <button id="refresh-insights-btn" class="refresh-btn" title="Refresh AI Insights">🔄</button>
                     </div>
 
                     <div id="ai-insights-content">
@@ -251,6 +252,29 @@ onMounted(() => {
     });
 
     loadTrackersForProfile();
+
+    // Add refresh button listener for AI insights
+    const refreshBtn = document.getElementById('refresh-insights-btn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            console.log('[Dashboard] Manual refresh requested');
+            loadTrackersForProfile(); // This will reload trackers and AI insights
+        });
+    }
+
+    // Listen for AI config changes and auto-refresh insights
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+        if (areaName === 'local' && changes.aiConfig) {
+            console.log('[Dashboard] AI config changed, refreshing insights...');
+            console.log('[Dashboard] Old config:', changes.aiConfig.oldValue);
+            console.log('[Dashboard] New config:', changes.aiConfig.newValue);
+
+            // Reload insights when AI config changes
+            setTimeout(() => {
+                loadTrackersForProfile();
+            }, 500); // Small delay to ensure config is saved
+        }
+    });
 
 });
 
@@ -554,14 +578,24 @@ async function loadAIInsights(trackers) {
     }
 
     // Show the AI insights card
-    document.getElementById('ai-insights-card').style.display = 'block';
+    const insightsCard = document.getElementById('ai-insights-card');
+    insightsCard.style.display = 'block';
+
+    // Add loading state to refresh button
+    const refreshBtn = document.getElementById('refresh-insights-btn');
+    if (refreshBtn) {
+        refreshBtn.classList.add('loading');
+        refreshBtn.style.pointerEvents = 'none';
+    }
 
     // Get tracker info with risk scores
     const trackerDataWithRisk = trackers.map(tracker => {
         const info = getTrackerInfo(tracker.trackerDomain);
         return {
             ...tracker,
-            ...info
+            ...info,
+            // Preserve the original category from Disconnect.me if it exists
+            category: tracker.category || info.category || 'Unknown'
         };
     });
 
@@ -587,38 +621,39 @@ async function loadAIInsights(trackers) {
 
     // Get AI insights (will use rule-based by default, or Ollama if enabled)
     try {
+        console.log('[Dashboard] Requesting insights for', trackerDataWithRisk.length, 'trackers');
         const insights = await getInsights(trackerDataWithRisk, overallRisk.score, overallRisk.level);
+        console.log('[Dashboard] Received insights from:', insights.source);
 
-        // Update AI badge based on whether AI was actually used
-        // The insights object should indicate if it came from AI or rule-based
+        // Update AI badge based on the actual source of insights
         const aiBadge = document.getElementById('ai-badge');
 
-        // Check if insights came from AI (by checking if timestamp is very recent and config is enabled)
-        chrome.storage.local.get(['aiConfig'], async (data) => {
-            const isAIEnabled = data.aiConfig && data.aiConfig.enabled;
-
-            if (isAIEnabled) {
-                // Check if Ollama is actually available
-                const { checkOllamaAvailability } = await import('../services/aiService');
-                const isAvailable = await checkOllamaAvailability(data.aiConfig);
-
-                if (isAvailable) {
-                    aiBadge.textContent = 'AI Powered';
-                    aiBadge.style.background = 'linear-gradient(135deg, #10ac84 0%, #0abde3 100%)';
-                } else {
+        if (insights.source === 'ai') {
+            console.log('[Dashboard] ✓ Displaying AI-generated insights');
+            aiBadge.textContent = 'AI Powered';
+            aiBadge.style.background = 'linear-gradient(135deg, #10ac84 0%, #0abde3 100%)';
+        } else {
+            console.log('[Dashboard] Displaying rule-based insights');
+            // Check if AI was enabled but failed
+            chrome.storage.local.get(['aiConfig'], (data) => {
+                const isAIEnabled = data.aiConfig && data.aiConfig.enabled;
+                if (isAIEnabled) {
                     aiBadge.textContent = 'Rule-Based (AI Unavailable)';
                     aiBadge.style.background = 'linear-gradient(135deg, #ee5a6f 0%, #f368e0 100%)';
+                    console.warn('[Dashboard] AI was enabled but fell back to rule-based');
+                } else {
+                    aiBadge.textContent = 'Rule-Based';
+                    aiBadge.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
                 }
-            } else {
-                aiBadge.textContent = 'Rule-Based';
-                aiBadge.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-            }
-        });
+            });
+        }
 
         // Update summary
         document.getElementById('ai-summary').textContent = insights.summary;
 
         // Update risk analysis
+        console.log('[Dashboard] Risk analysis type:', typeof insights.riskAnalysis);
+        console.log('[Dashboard] Risk analysis value:', insights.riskAnalysis);
         document.getElementById('ai-risk-analysis').textContent = insights.riskAnalysis;
 
         // Update recommendations
@@ -630,9 +665,18 @@ async function loadAIInsights(trackers) {
             recommendationsList.appendChild(li);
         });
 
+        console.log('[Dashboard] AI insights card updated successfully');
+
     } catch (error) {
-        console.error('Error loading AI insights:', error);
+        console.error('[Dashboard] Error loading AI insights:', error);
         document.getElementById('ai-summary').textContent = 'Unable to generate insights at this time.';
+    } finally {
+        // Remove loading state from refresh button
+        const refreshBtn = document.getElementById('refresh-insights-btn');
+        if (refreshBtn) {
+            refreshBtn.classList.remove('loading');
+            refreshBtn.style.pointerEvents = 'auto';
+        }
     }
 }
 

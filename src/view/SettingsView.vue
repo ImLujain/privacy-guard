@@ -163,13 +163,25 @@ const aiConfig = ref<OllamaConfig>({
 
 const testing = ref(false);
 const connectionStatus = ref<{ type: 'success' | 'error'; message: string } | null>(null);
+const isInitializing = ref(true);
 
 onMounted(async () => {
   const config = await getAIConfig();
   aiConfig.value = config;
+  // Allow a tick for Vue to update the DOM, then enable saving
+  await new Promise(resolve => setTimeout(resolve, 100));
+  isInitializing.value = false;
+  console.log('[Settings] Loaded AI config:', config);
 });
 
 async function saveSettings() {
+  // Don't save if we're still initializing
+  if (isInitializing.value) {
+    console.log('[Settings] Skipping save during initialization');
+    return;
+  }
+
+  console.log('[Settings] Saving AI config:', aiConfig.value);
   await saveAIConfig(aiConfig.value);
   connectionStatus.value = null; // Clear status when settings change
 }
