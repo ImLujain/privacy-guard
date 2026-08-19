@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
-// Profile 1: Windows Desktop — Chrome 147 (validated 2026-04)
+// Profile 4: Windows Desktop — Edge 147 (validated 2026-04)
 
 Object.defineProperty(navigator, "platform", {
 	get: () => "Win32",
@@ -34,7 +34,7 @@ Object.defineProperty(navigator, "plugins", {
 
 Object.defineProperty(navigator, "userAgent", {
 	get: () =>
-		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0",
 configurable: true,
 });
 
@@ -53,9 +53,9 @@ Object.defineProperty(navigator, "language", {
 configurable: true,
 });
 
-// 8 cores — even number, common for Intel/AMD desktop
+// 16 cores — high-end desktop (validated from Edge capture)
 Object.defineProperty(navigator, "hardwareConcurrency", {
-    get: () => 8,
+    get: () => 16,
 configurable: true,
 });
 
@@ -65,7 +65,7 @@ Object.defineProperty(navigator, "maxTouchPoints", {
 	configurable: true,
 });
 
-// Chrome 147 disabled these APIs — actively hide them so real values don't show through
+// Edge 147 disabled these APIs — actively hide them
 Object.defineProperty(navigator, "deviceMemory", {
 	get: () => undefined,
 	configurable: true,
@@ -103,25 +103,25 @@ Object.defineProperty(navigator, "mimeTypes", {
 configurable: true,
 });
 
-// 1920x1080 — most common desktop resolution (Steam HW Survey)
+// 2560x1440 QHD monitor
 Object.defineProperty(screen, "width", {
-	get: () => 1920,
+	get: () => 2560,
 configurable: true,
 });
 
 Object.defineProperty(screen, "height", {
-	get: () => 1080,
+	get: () => 1440,
 configurable: true,
 });
 
-// Windows taskbar deducts ~40px
+// Windows taskbar ~40px
 Object.defineProperty(screen, "availWidth", {
-	get: () => 1920,
+	get: () => 2560,
 configurable: true,
 });
 
 Object.defineProperty(screen, "availHeight", {
-	get: () => 1040,
+	get: () => 1400,
 configurable: true,
 });
 

@@ -11,6 +11,72 @@
 
     <!-- Content Section -->
     <div class="settings-content">
+      <!-- Experiment Mode Card -->
+      <div class="settings-card">
+        <div class="card-header">
+          <span class="card-icon">🧪</span>
+          <h2>Experiment Mode</h2>
+        </div>
+        <div class="card-body">
+          <p class="card-description">
+            Controls how PrivacyGuard interacts with sites. Use <strong>Monitor-only</strong>
+            for paired before/after measurements: detection and logging still run,
+            but no User-Agent override, profile injection, or cookie blocking is applied.
+          </p>
+          <div class="mode-options">
+            <label class="mode-option" :class="{ selected: experimentMode === 'off' }">
+              <input type="radio" value="off" v-model="experimentMode" @change="saveExperimentMode">
+              <div>
+                <div class="mode-title">Off</div>
+                <div class="mode-desc">Extension passive. Useful as a baseline control.</div>
+              </div>
+            </label>
+            <label class="mode-option" :class="{ selected: experimentMode === 'monitor-only' }">
+              <input type="radio" value="monitor-only" v-model="experimentMode" @change="saveExperimentMode">
+              <div>
+                <div class="mode-title">Monitor-only</div>
+                <div class="mode-desc">Log trackers + property access. No mitigation.</div>
+              </div>
+            </label>
+            <label class="mode-option" :class="{ selected: experimentMode === 'mitigation-on' }">
+              <input type="radio" value="mitigation-on" v-model="experimentMode" @change="saveExperimentMode">
+              <div>
+                <div class="mode-title">Mitigation-on</div>
+                <div class="mode-desc">Full protection: profile injection + UA override.</div>
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Export Card -->
+      <div class="settings-card">
+        <div class="card-header">
+          <span class="card-icon">📤</span>
+          <h2>Export Collected Data</h2>
+        </div>
+        <div class="card-body">
+          <p class="card-description">
+            Local-first: nothing leaves your device. JSON bundles every dataset
+            with a meta block; CSV emits three sections delimited by
+            <code>---</code> rows so analysis tools can split them apart.
+          </p>
+          <div class="export-stats">
+            <div class="export-stat"><span>Tracker events</span><strong>{{ counts.trackers }}</strong></div>
+            <div class="export-stat"><span>Property accesses</span><strong>{{ counts.propertyAccess }}</strong></div>
+            <div class="export-stat"><span>Page-load timings</span><strong>{{ counts.pageLoadTimings }}</strong></div>
+          </div>
+          <div class="export-buttons">
+            <button class="test-btn" @click="exportJson" :disabled="exporting">Export JSON</button>
+            <button class="test-btn" @click="exportCsv" :disabled="exporting">Export CSV</button>
+            <button class="test-btn refresh-btn" @click="refreshCounts" :disabled="exporting">Refresh counts</button>
+          </div>
+          <div v-if="exportMessage" class="status-message" :class="exportMessage.type">
+            {{ exportMessage.message }}
+          </div>
+        </div>
+      </div>
+
       <!-- AI Settings Card -->
       <div class="settings-card">
         <div class="card-header">
@@ -153,6 +219,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { getAIConfig, saveAIConfig, checkOllamaAvailability, type OllamaConfig } from '../services/aiService';
+import { getTrackerInfo } from '../data/trackerDatabase';
 
 const aiConfig = ref<OllamaConfig>({
   enabled: false,
@@ -165,9 +232,184 @@ const testing = ref(false);
 const connectionStatus = ref<{ type: 'success' | 'error'; message: string } | null>(null);
 const isInitializing = ref(true);
 
+type ExperimentMode = 'off' | 'monitor-only' | 'mitigation-on';
+const experimentMode = ref<ExperimentMode>('mitigation-on');
+const exporting = ref(false);
+const exportMessage = ref<{ type: 'success' | 'error'; message: string } | null>(null);
+const counts = ref({ trackers: 0, propertyAccess: 0, pageLoadTimings: 0 });
+
+function getExportData(): Promise<{
+  trackers: any[];
+  propertyAccess: any[];
+  pageLoadTimings: any[];
+}> {
+  return new Promise(resolve => {
+    chrome.runtime.sendMessage({ action: 'getAllExportData' }, (response) => {
+      resolve(response || { trackers: [], propertyAccess: [], pageLoadTimings: [] });
+    });
+  });
+}
+
+async function refreshCounts() {
+  const data = await getExportData();
+  counts.value = {
+    trackers: data.trackers.length,
+    propertyAccess: data.propertyAccess.length,
+    pageLoadTimings: data.pageLoadTimings.length
+  };
+}
+
+function saveExperimentMode() {
+  chrome.storage.local.set({ experimentMode: experimentMode.value });
+}
+
+function getExtensionVersion(): string {
+  try {
+    return chrome.runtime.getManifest().version;
+  } catch (_) { return 'unknown'; }
+}
+
+function triggerDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function timestampSlug(): string {
+  return new Date().toISOString().replace(/[:.]/g, '-');
+}
+
+async function exportJson() {
+  exporting.value = true;
+  exportMessage.value = null;
+  try {
+    const data = await getExportData();
+    // Enrich tracker events with risk level so downstream analysis matches the
+    // popup/dashboard view without re-importing trackerDatabase.
+    const trackers = data.trackers.map((t: any) => {
+      const info = getTrackerInfo(t.trackerDomain);
+      return { ...t, riskLevel: info?.riskLevel || 'medium', riskScore: info?.riskScore ?? 50 };
+    });
+    const out = {
+      meta: {
+        exportedAt: new Date().toISOString(),
+        extensionVersion: getExtensionVersion(),
+        totalEvents:
+          trackers.length + data.propertyAccess.length +
+          data.pageLoadTimings.length
+      },
+      trackers,
+      propertyAccess: data.propertyAccess,
+      pageLoadTimings: data.pageLoadTimings
+    };
+    const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+    triggerDownload(blob, `privacyguard-export-${timestampSlug()}.json`);
+    exportMessage.value = { type: 'success', message: `Exported ${out.meta.totalEvents} events.` };
+  } catch (e: any) {
+    exportMessage.value = { type: 'error', message: `Export failed: ${e?.message || e}` };
+  } finally {
+    exporting.value = false;
+  }
+}
+
+// RFC-4180-ish escaping: wrap in quotes if value contains comma, quote, or newline;
+// double-up embedded quotes. Required to keep URLs and query strings parseable.
+function csvCell(v: any): string {
+  if (v === null || v === undefined) return '';
+  const s = String(v);
+  if (/[",\r\n]/.test(s)) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
+function toCsvSection(headers: string[], rows: any[][]): string {
+  const lines = [headers.map(csvCell).join(',')];
+  for (const row of rows) {
+    lines.push(row.map(csvCell).join(','));
+  }
+  return lines.join('\n');
+}
+
+async function exportCsv() {
+  exporting.value = true;
+  exportMessage.value = null;
+  try {
+    const data = await getExportData();
+
+    const trackerHeaders = [
+      'domain', 'timestamp', 'parent_domain', 'first_or_third_party',
+      'tracker_category', 'risk_level', 'experiment_mode', 'profile'
+    ];
+    const trackerRows = data.trackers.map((t: any) => {
+      const info = getTrackerInfo(t.trackerDomain);
+      return [
+        t.trackerDomain,
+        t.timestamp,
+        t.parentDomain || '',
+        t.firstOrThirdParty || (t.parentDomain && t.parentDomain !== t.trackerDomain ? 'third-party' : 'first-party'),
+        t.category || '',
+        info?.riskLevel || 'medium',
+        t.experimentMode || '',
+        t.profile || ''
+      ];
+    });
+
+    const accessHeaders = [
+      'domain', 'timestamp', 'property', 'is_third_party',
+      'experiment_mode', 'profile'
+    ];
+    const accessRows = data.propertyAccess.map((a: any) => [
+      a.domain, a.timestamp, a.property, a.isThirdParty ? 'true' : 'false',
+      a.experimentMode || '', a.profile || ''
+    ]);
+
+    const timingHeaders = [
+      'domain', 'url', 'timestamp', 'dom_content_loaded_ms', 'load_event_ms',
+      'script_count', 'third_party_script_count', 'experiment_mode', 'profile'
+    ];
+    const timingRows = data.pageLoadTimings.map((p: any) => [
+      p.domain, p.url || '', p.timestamp, p.domContentLoadedMs, p.loadEventMs,
+      p.scriptCount, p.thirdPartyScriptCount, p.experimentMode || '', p.profile || ''
+    ]);
+
+    // Single CSV file with three sections separated by an explicit marker row.
+    // Tools that need individual frames split on lines starting with "---".
+    const csv = [
+      '--- trackers ---',
+      toCsvSection(trackerHeaders, trackerRows),
+      '',
+      '--- propertyAccess ---',
+      toCsvSection(accessHeaders, accessRows),
+      '',
+      '--- pageLoadTimings ---',
+      toCsvSection(timingHeaders, timingRows),
+      ''
+    ].join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    triggerDownload(blob, `privacyguard-export-${timestampSlug()}.csv`);
+    const total = trackerRows.length + accessRows.length + timingRows.length;
+    exportMessage.value = { type: 'success', message: `Exported ${total} rows across 3 sections.` };
+  } catch (e: any) {
+    exportMessage.value = { type: 'error', message: `Export failed: ${e?.message || e}` };
+  } finally {
+    exporting.value = false;
+  }
+}
+
 onMounted(async () => {
   const config = await getAIConfig();
   aiConfig.value = config;
+  chrome.storage.local.get(['experimentMode'], (data) => {
+    experimentMode.value = (data.experimentMode as ExperimentMode) || 'mitigation-on';
+  });
+  await refreshCounts();
   // Allow a tick for Vue to update the DOM, then enable saving
   await new Promise(resolve => setTimeout(resolve, 100));
   isInitializing.value = false;
@@ -585,8 +827,85 @@ input:checked + .toggle-slider:before {
   line-height: 1.6;
 }
 
+/* Experiment Mode */
+.mode-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mode-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border: 2px solid #e1e8ed;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #f8f9fa;
+}
+.mode-option:hover {
+  border-color: #b3bdc7;
+}
+.mode-option.selected {
+  border-color: #667eea;
+  background: #eef0ff;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+}
+.mode-option input[type="radio"] {
+  margin-top: 4px;
+  accent-color: #667eea;
+}
+.mode-title {
+  font-weight: 700;
+  color: #2d3436;
+  font-size: 15px;
+}
+.mode-desc {
+  font-size: 13px;
+  color: #636e72;
+  margin-top: 4px;
+}
+
+/* Export */
+.export-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.export-stat {
+  background: #f8f9fa;
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.export-stat span {
+  font-size: 12px;
+  color: #636e72;
+}
+.export-stat strong {
+  font-size: 20px;
+  color: #2d3436;
+}
+.export-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.refresh-btn {
+  background: #95a5a6 !important;
+  box-shadow: 0 4px 12px rgba(149, 165, 166, 0.3) !important;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
+  .export-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
   .settings-header {
     padding: 32px 24px;
     flex-direction: column;

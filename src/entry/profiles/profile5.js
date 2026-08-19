@@ -1,40 +1,28 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
-// Profile 1: Windows Desktop — Chrome 147 (validated 2026-04)
+// Profile 5: Android — Chrome 145 (validated 2026-04)
 
 Object.defineProperty(navigator, "platform", {
-	get: () => "Win32",
+	get: () => "Linux armv81",
 configurable: true,
 });
 
+// Android Chrome reports 0 plugins (validated)
 Object.defineProperty(navigator, "plugins", {
 	get: () => {
 		return {
-			length: 5,
-			item: (index) => {
-				const pluginList = [
-					{ name: "PDF Viewer", filename: "internal-pdf-viewer" },
-					{ name: "Chrome PDF Viewer", filename: "mhjfbmdgcfjbbpaeojofohoefgiehjai" },
-					{ name: "Chromium PDF Viewer", filename: "mhjfbmdgcfjbbpaeojofohoefgiehjai" },
-					{ name: "Microsoft Edge PDF Viewer", filename: "mhjfbmdgcfjbbpaeojofohoefgiehjai" },
-					{ name: "WebKit built-in PDF", filename: "internal-pdf-viewer" }
-				];
-				return pluginList[index] || null;
-			},
-			namedItem: (name) => null,
+			length: 0,
+			item: () => null,
+			namedItem: () => null,
 			refresh: () => {},
-			[Symbol.iterator]: function* () {
-				for (let i = 0; i < this.length; i++) {
-					yield this.item(i);
-				}
-			}
+			[Symbol.iterator]: function* () {}
 		};
 	},
-	configurable: true,
+configurable: true,
 });
 
 Object.defineProperty(navigator, "userAgent", {
 	get: () =>
-		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+		"Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Mobile Safari/537.36",
 configurable: true,
 });
 
@@ -53,19 +41,19 @@ Object.defineProperty(navigator, "language", {
 configurable: true,
 });
 
-// 8 cores — even number, common for Intel/AMD desktop
+// Snapdragon 8 Gen 2: 8 cores (even, realistic)
 Object.defineProperty(navigator, "hardwareConcurrency", {
     get: () => 8,
 configurable: true,
 });
 
-// Desktop: no touch
+// Android: touch-capable device
 Object.defineProperty(navigator, "maxTouchPoints", {
-	get: () => 0,
+	get: () => 5,
 	configurable: true,
 });
 
-// Chrome 147 disabled these APIs — actively hide them so real values don't show through
+// Android Chrome 145 did not expose these — actively hide them
 Object.defineProperty(navigator, "deviceMemory", {
 	get: () => undefined,
 	configurable: true,
@@ -83,45 +71,49 @@ if (navigator.userAgentData) {
 	});
 }
 
+// Android Chrome reports 0 mimeTypes (validated)
 Object.defineProperty(navigator, "mimeTypes", {
 	get: () => {
-		const mimes = [
-			{ type: "application/pdf", suffixes: "pdf", description: "Portable Document Format" },
-			{ type: "text/pdf", suffixes: "pdf", description: "Portable Document Format" }
-		];
 		return {
-			length: mimes.length,
-			item: (index) => mimes[index] || null,
-			namedItem: (name) => mimes.find(m => m.type === name) || null,
-			[Symbol.iterator]: function* () {
-				for (let i = 0; i < this.length; i++) {
-					yield this.item(i);
-				}
-			}
+			length: 0,
+			item: () => null,
+			namedItem: () => null,
+			[Symbol.iterator]: function* () {}
 		};
 	},
 configurable: true,
 });
 
-// 1920x1080 — most common desktop resolution (Steam HW Survey)
+// Android connection is exposed
+Object.defineProperty(navigator, "connection", {
+	get: () => ({
+		effectiveType: '4g',
+		downlink: 10,
+		rtt: 50,
+		saveData: false
+	}),
+	configurable: true
+});
+
+// Pixel 7 dimensions (412x906, validated)
 Object.defineProperty(screen, "width", {
-	get: () => 1920,
+	get: () => 412,
 configurable: true,
 });
 
 Object.defineProperty(screen, "height", {
-	get: () => 1080,
+	get: () => 906,
 configurable: true,
 });
 
-// Windows taskbar deducts ~40px
+// Android status bar + nav bar ~48px
 Object.defineProperty(screen, "availWidth", {
-	get: () => 1920,
+	get: () => 412,
 configurable: true,
 });
 
 Object.defineProperty(screen, "availHeight", {
-	get: () => 1040,
+	get: () => 858,
 configurable: true,
 });
 

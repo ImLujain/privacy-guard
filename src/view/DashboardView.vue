@@ -20,9 +20,11 @@
                 <label for="profileSelect" class="profile-selector-label">🎭 Active Profile</label>
                 <select id="profileSelect" class="profile-select">
                     <option value="allProfiles" selected>🔓 Real Identity</option>
-                    <option value="profile1">💻 Windows Desktop</option>
-                    <option value="profile2">🍎 MacBook Air</option>
-                    <option value="profile3">📱 iPhone</option>
+                    <option value="profile1">💻 Windows Desktop (Chrome)</option>
+                    <option value="profile2">🍎 MacBook (Safari)</option>
+                    <option value="profile3">📱 iPhone (Safari)</option>
+                    <option value="profile4">🪟 Windows Desktop (Edge)</option>
+                    <option value="profile5">🤖 Android (Chrome)</option>
                 </select>
             </div>
 
@@ -300,10 +302,10 @@ function loadProfileInfo(selectedProfile) {
         profile1: {
             platform: "Win32",
             plugins: "5 plugins",
-            userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
             languages: "en-US, en",
-            deviceMemory: "8 GB",
-            battery: "100% (plugged in)",
+            deviceMemory: "Not available (Chrome 147 disabled)",
+            battery: "Not available (Chrome 147 disabled)",
             mediaDevices: "Accessible",
             mimeTypes: "2 mime types",
             hardwareConcurrency: "8 cores",
@@ -313,30 +315,58 @@ function loadProfileInfo(selectedProfile) {
         },
         profile2: {
             platform: "MacIntel",
-            plugins: "2 plugins",
-            userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Safari/605.1.15",
+            plugins: "5 plugins",
+            userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15",
             languages: "en-US, en",
-            deviceMemory: "8 GB",
-            battery: "Not available (Safari privacy)",
+            deviceMemory: "Not available (Safari)",
+            battery: "Not available (Safari)",
             mediaDevices: "Accessible",
-            mimeTypes: "1 mime type",
+            mimeTypes: "2 mime types",
             hardwareConcurrency: "8 cores",
-            screenResolution: "1440x900",
+            screenResolution: "1470x956",
             timezoneOffset: "UTC-7 (America/Los_Angeles)",
             dateTimeFormat: "en-US"
         },
         profile3: {
             platform: "iPhone",
-            plugins: "0 plugins",
-            userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_6_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Mobile/15E148 Safari/604.1",
+            plugins: "5 plugins",
+            userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1",
             languages: "en-US, en",
             deviceMemory: "Not available (iOS)",
-            battery: "Not available (iOS privacy)",
+            battery: "Not available (iOS)",
+            mediaDevices: "Accessible",
+            mimeTypes: "2 mime types",
+            hardwareConcurrency: "6 cores",
+            screenResolution: "414x896",
+            timezoneOffset: "UTC-5 (America/Chicago)",
+            dateTimeFormat: "en-US"
+        },
+        profile4: {
+            platform: "Win32",
+            plugins: "5 plugins",
+            userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0",
+            languages: "en-US, en",
+            deviceMemory: "Not available (Edge 147 disabled)",
+            battery: "Not available (Edge 147 disabled)",
+            mediaDevices: "Accessible",
+            mimeTypes: "2 mime types",
+            hardwareConcurrency: "16 cores",
+            screenResolution: "2560x1440",
+            timezoneOffset: "UTC-5 (America/New_York)",
+            dateTimeFormat: "en-US"
+        },
+        profile5: {
+            platform: "Linux armv81",
+            plugins: "0 plugins",
+            userAgent: "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Mobile Safari/537.36",
+            languages: "en-US, en",
+            deviceMemory: "Not available (Android Chrome)",
+            battery: "Not available (Android Chrome)",
             mediaDevices: "Accessible",
             mimeTypes: "0 mime types",
-            hardwareConcurrency: "6 cores",
-            screenResolution: "390x844",
-            timezoneOffset: "UTC-5 (America/Chicago)",
+            hardwareConcurrency: "8 cores",
+            screenResolution: "412x906",
+            timezoneOffset: "UTC-5 (America/New_York)",
             dateTimeFormat: "en-US"
         }
     };
@@ -396,13 +426,13 @@ let topTrackersChartInstance = null;
 function loadTrackersForProfile() {
     let selectedProfile = profileSelect.value;
     // Initially hide all charts
-    ['allProfiles','profile1', 'profile2', 'profile3'].forEach(profile => {
+    ['allProfiles','profile1', 'profile2', 'profile3', 'profile4', 'profile5'].forEach(profile => {
         const element = document.getElementById(`topTrackersChart`);
         if (element) {
             element.style.display = 'none';
         }
     });
-    var profiletest = ['allProfiles','profile1', 'profile2', 'profile3'];
+    var profiletest = ['allProfiles','profile1', 'profile2', 'profile3', 'profile4', 'profile5'];
     profiletest = [selectedProfile];
 
     // if (selectedProfile != 'allProfiles') {
@@ -523,10 +553,12 @@ function displayTopCategoriesChart(trackers, profile) {
     }
 
     const chartTitle = {
-        'profile1': 'Profile 1',
-        'profile2': 'Profile 2',
-        'profile3': 'Profile 3',
-        'allProfiles' : 'allProfiles'
+        'profile1': 'Windows Chrome',
+        'profile2': 'MacBook Safari',
+        'profile3': 'iPhone Safari',
+        'profile4': 'Windows Edge',
+        'profile5': 'Android Chrome',
+        'allProfiles' : 'Real Identity'
     }[profile];
 
     window[`topTrackersChartInstance`] = new Chart(ctx, {

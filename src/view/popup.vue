@@ -1,16 +1,22 @@
 <template>
   <div id="popup-container">
-    <!-- Modern Header with Logo -->
+    <!-- Header -->
     <div class="header">
       <div class="header-title">
-        <div class="logo-shield">🛡️</div>
+        <img v-if="logoUrl" :src="logoUrl" class="header-logo" alt="PrivacyGuard" />
+        <div v-else class="header-logo header-logo-fallback">🛡</div>
         <div class="title-text">
-          <h1>Privacy Guard</h1>
-          <p class="subtitle">Browser Protection Active</p>
+          <h1>PrivacyGuard</h1>
+          <div class="mode-pill" :class="`mode-${protectionBanner.tone}`">
+            <span class="mode-dot"></span>
+            <span class="mode-label">{{ protectionBanner.label }}</span>
+          </div>
         </div>
+        <button class="header-settings" :title="protectionBanner.detail" @click="openSettings" aria-label="Settings">
+          ⚙
+        </button>
       </div>
 
-      <!-- Modern Tab Navigation -->
       <div class="tab-headers">
         <button
           :class="{ 'active-tab': currentTab === 'trackers' }"
@@ -23,8 +29,8 @@
           :class="{ 'active-tab': currentTab === 'accesses' }"
           @click="currentTab = 'accesses'"
           class="tab-btn">
-          <span class="tab-icon">🔍</span>
-          <span class="tab-label">Insights</span>
+          <span class="tab-icon">🧬</span>
+          <span class="tab-label">Fingerprint</span>
         </button>
       </div>
     </div>
@@ -33,9 +39,11 @@
     <div class="tab-content">
       <!-- Trackers Summary Tab -->
       <div v-if="currentTab === 'trackers'" class="trackers-summary fade-in">
+        <div class="scope-note">Counts since extension installed (active profile)</div>
+
         <div class="stats-grid">
           <div class="stat-card">
-            <div class="stat-icon tracker-icon">🎯</div>
+            <div class="stat-icon">🎯</div>
             <div class="stat-info">
               <div class="stat-label">Unique Trackers</div>
               <div class="stat-value">{{ uniqueTrackers }}</div>
@@ -43,7 +51,7 @@
           </div>
 
           <div class="stat-card">
-            <div class="stat-icon domain-icon">🌐</div>
+            <div class="stat-icon">🌐</div>
             <div class="stat-info">
               <div class="stat-label">Parent Domains</div>
               <div class="stat-value">{{ uniqueParentDomains }}</div>
@@ -51,67 +59,92 @@
           </div>
         </div>
 
-        <div class="protection-status">
-          <div class="status-indicator active"></div>
-          <span>Protection Active</span>
+        <div class="risk-block" :class="`risk-block-${overallRisk.level}`">
+          <div class="risk-block-head">
+            <span class="risk-block-title">Risk profile</span>
+            <span class="risk-block-tag">{{ overallRisk.label }}</span>
+          </div>
+          <div class="risk-pills">
+            <div class="risk-pill risk-critical" :class="{ dim: riskBreakdown.critical === 0 }">
+              <span class="risk-pill-num">{{ riskBreakdown.critical }}</span>
+              <span class="risk-pill-lbl">Critical</span>
+            </div>
+            <div class="risk-pill risk-high" :class="{ dim: riskBreakdown.high === 0 }">
+              <span class="risk-pill-num">{{ riskBreakdown.high }}</span>
+              <span class="risk-pill-lbl">High</span>
+            </div>
+            <div class="risk-pill risk-medium" :class="{ dim: riskBreakdown.medium === 0 }">
+              <span class="risk-pill-num">{{ riskBreakdown.medium }}</span>
+              <span class="risk-pill-lbl">Med</span>
+            </div>
+            <div class="risk-pill risk-low" :class="{ dim: riskBreakdown.low === 0 }">
+              <span class="risk-pill-num">{{ riskBreakdown.low }}</span>
+              <span class="risk-pill-lbl">Low</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Access Insights Tab -->
+      <!-- Fingerprint / Access Insights Tab -->
       <div v-if="currentTab === 'accesses'" class="access-insights fade-in">
-        <div v-if="localStorageData && localStorageData.value !== 'No data found for this key'"
+        <div v-if="localStorageData && localStorageData.value !== 'No data found for this key.'"
           class="local-storage-data">
-          <h6 class="section-title">🔐 Accessed Properties</h6>
+          <div class="section-title">
+            <span>🧬 Data this site read</span>
+            <span class="section-count">{{ parsedLocalStorageData.length }}</span>
+          </div>
           <div class="scroll-div">
             <ul>
-              <li v-for="(item, index) in parsedLocalStorageData" :key="index" class="access-item modern-item">
-                <div class="item-content">
-                  <span v-if="item.isThirdParty.includes(true) && item.isThirdParty.includes(false)" class="access-badges">
-                    <span class="badge badge-third-party">3rd Party</span>
-                    <span class="badge badge-local">Local</span>
+              <li
+                v-for="item in parsedLocalStorageData"
+                :key="item.property"
+                class="access-item"
+                :class="`tier-${item.tier}`">
+                <div class="item-row">
+                  <span class="tier-dot" :class="`tier-dot-${item.tier}`"></span>
+                  <div class="property-name">
+                    {{ deviceInfoDes[item.property] ? deviceInfoDes[item.property]['value'] : item.property }}
+                  </div>
+                  <span class="access-badges">
+                    <span v-if="item.isThirdParty.includes(true)" class="badge badge-third-party">3rd</span>
+                    <span v-if="item.isThirdParty.includes(false)" class="badge badge-local">1st</span>
                   </span>
-                  <span v-else-if="item.isThirdParty.includes(true)" class="access-badges">
-                    <span class="badge badge-third-party">3rd Party</span>
-                  </span>
-                  <span v-else class="access-badges">
-                    <span class="badge badge-local">Local</span>
-                  </span>
-
-                  <div class="property-name">{{ deviceInfoDes[item.property]?deviceInfoDes[item.property]['value']:"N/A"}}</div>
+                  <button
+                    v-if="hasDescription(item.property)"
+                    class="info-btn"
+                    @mouseenter="activeTooltipKey = item.property"
+                    @mouseleave="activeTooltipKey = null"
+                    @click.stop="activeTooltipKey = activeTooltipKey === item.property ? null : item.property"
+                    aria-label="Show description">
+                    ℹ
+                  </button>
                 </div>
-
-                <button class="info-btn" @mouseover="showDescriptioh" @mouseleave="hideDescriptioh">
-                  ℹ️
-                </button>
-                <div class="tooltip-description">{{ deviceInfoDes[item.property]?deviceInfoDes[item.property]['des']:"No description available"}}</div>
+                <div
+                  v-if="activeTooltipKey === item.property && hasDescription(item.property)"
+                  class="tooltip-description">
+                  {{ deviceInfoDes[item.property]['des'] }}
+                </div>
               </li>
             </ul>
           </div>
 
           <div class="legend">
-            <div class="legend-item">
-              <span class="badge badge-third-party">3rd Party</span>
-              <span class="legend-text">External Access</span>
-            </div>
-            <div class="legend-item">
-              <span class="badge badge-local">Local</span>
-              <span class="legend-text">Site Access</span>
-            </div>
+            <span class="legend-item"><span class="tier-dot tier-dot-high"></span>High</span>
+            <span class="legend-item"><span class="tier-dot tier-dot-medium"></span>Medium</span>
+            <span class="legend-item"><span class="tier-dot tier-dot-low"></span>Low</span>
+            <span class="legend-spacer"></span>
+            <span class="legend-item"><span class="badge badge-third-party badge-mini">3rd</span>External</span>
           </div>
         </div>
         <div v-else class="no-data">
-          <div class="no-data-icon">📭</div>
-          <p>No tracking data for this page</p>
-          <small>Visit a website to see tracking insights</small>
+          <div class="no-data-icon">🧬</div>
+          <p>No fingerprint accesses yet</p>
+          <small>Reload the current tab — events will appear here.</small>
         </div>
       </div>
-
-
-
     </div>
 
-
-    <!-- Modern Dashboard Button -->
+    <!-- Footer -->
     <div class="dashboard-footer">
       <button @click="openDashboard" class="dashboard-btn">
         <span class="btn-icon">📈</span>
@@ -124,7 +157,8 @@
 
 <script setup lang="ts">
 import CircleProgressBar from './CircleProgressBar.vue';
-import { ref, watch, computed } from "vue";
+import { ref, watch, computed, onMounted } from "vue";
+import { getTrackerInfo } from '../data/trackerDatabase';
 
 // require('../../public/PrivacyGuard-detect-fp-calls.js')
 
@@ -370,124 +404,175 @@ const deviceInfoDes: {[key: string]: {value: string, des: string }  } = {
 
 
 
-const currentTab = ref('trackers');
-const uniqueTrackersCount = ref(0);
-const totalCount = ref(0);
+type ExperimentMode = 'off' | 'monitor-only' | 'mitigation-on';
+
+const currentTab = ref<'trackers' | 'accesses'>('trackers');
 const uniqueTrackers = ref(0);
 const uniqueParentDomains = ref(0);
-//let localStorageData = ref<string | null>(null);
-//const localStorageData = ref('');
 const localStorageData = ref('') as unknown as { value: string };
+const currentDomainRef = ref<string>('');
+const activeTooltipKey = ref<string | null>(null);
+const experimentMode = ref<ExperimentMode>('mitigation-on');
+const selectedProfile = ref<string>('allProfiles');
+const allTrackers = ref<Record<string, any[]>>({});
+const logoUrl = ref<string>('');
+try { logoUrl.value = chrome.runtime.getURL('logo.png'); } catch (_) { logoUrl.value = ''; }
+
+// Banner shown at the top of the popup reflects the experiment mode so the
+// "Browser Protection Active" line never lies.
+const protectionBanner = computed(() => {
+  switch (experimentMode.value) {
+    case 'off':
+      return { label: 'Extension off', tone: 'danger', detail: 'No monitoring, no mitigation.' };
+    case 'monitor-only':
+      return { label: 'Monitoring only', tone: 'warning', detail: 'Logging on, mitigation off.' };
+    default:
+      return { label: 'Full protection', tone: 'success', detail: `Active profile: ${selectedProfile.value === 'allProfiles' ? 'none' : selectedProfile.value}` };
+  }
+});
+
+const riskBreakdown = computed(() => {
+  const profileKey = allTrackers.value[selectedProfile.value]
+    ? selectedProfile.value
+    : Object.keys(allTrackers.value)[0];
+  const list = profileKey ? (allTrackers.value[profileKey] || []) : [];
+  const seen = new Set<string>();
+  const counts = { critical: 0, high: 0, medium: 0, low: 0 };
+  for (const t of list) {
+    if (seen.has(t.trackerDomain)) continue;
+    seen.add(t.trackerDomain);
+    const info = getTrackerInfo(t.trackerDomain);
+    if (info) (counts as any)[info.riskLevel]++;
+  }
+  return counts;
+});
+
+const overallRisk = computed(() => {
+  const c = riskBreakdown.value;
+  if (c.critical > 0) return { level: 'critical', label: 'Critical' };
+  if (c.high > 0) return { level: 'high', label: 'High' };
+  if (c.medium > 0) return { level: 'medium', label: 'Medium' };
+  if (c.low > 0) return { level: 'low', label: 'Low' };
+  return { level: 'none', label: 'Clear' };
+});
+
+// Properties whose dictionary description is missing or the literal string
+// "null" shouldn't show an info affordance — clicking it returns nothing.
+function hasDescription(propKey: string): boolean {
+  const entry = deviceInfoDes[propKey];
+  if (!entry) return false;
+  const des = entry.des;
+  return !!des && des !== 'null';
+}
+
+function loadTrackerData() {
+  chrome.runtime.sendMessage({ action: 'getTrackers' }, (response) => {
+    if (!response) return;
+    uniqueParentDomains.value = response.uniqueDomainsCount || 0;
+    uniqueTrackers.value = response.uniqueTrackersCount || 0;
+    allTrackers.value = response.trackers || {};
+  });
+}
+
+onMounted(() => {
+  // Trackers tab is initial; we used to rely on the watch firing on switch,
+  // which never happened on first mount — load eagerly.
+  loadTrackerData();
+  fetchLocalStorageData();
+  chrome.storage.local.get(['experimentMode', 'selectedProfile'], (data) => {
+    experimentMode.value = (data.experimentMode as ExperimentMode) || 'mitigation-on';
+    selectedProfile.value = data.selectedProfile || 'allProfiles';
+  });
+  chrome.storage.onChanged.addListener((changes) => {
+    if (changes.experimentMode) {
+      experimentMode.value = (changes.experimentMode.newValue as ExperimentMode) || 'mitigation-on';
+    }
+    if (changes.selectedProfile) {
+      selectedProfile.value = changes.selectedProfile.newValue || 'allProfiles';
+    }
+  });
+});
 
 
 
-// Function to fetch data from the webpage's local storage
+// Property-access data now lives in chrome.storage.local (centralized for export).
+// Background re-derives the per-domain {property, isThirdParty[]} view for us.
 const fetchLocalStorageData = () => {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs.length > 0 && tabs[0].id != null && tabs[0].url) {
-      const currentDomain = new URL(tabs[0].url).hostname;
-      const localStorageKey = `accessedProperties_${currentDomain}`;
-
-      chrome.tabs.sendMessage(tabs[0].id, { action: "getLocalStorageDataForKey", key: localStorageKey }, response => {
-        localStorageData.value = response ? response.data : 'No data found for this key.';
-      });
+    if (tabs.length > 0 && tabs[0].url) {
+      let currentDomain = '';
+      try { currentDomain = new URL(tabs[0].url).hostname; } catch (_) { currentDomain = ''; }
+      currentDomainRef.value = currentDomain;
+      if (!currentDomain) {
+        localStorageData.value = 'No data found for this key.';
+        return;
+      }
+      chrome.runtime.sendMessage(
+        { action: "getPropertyAccessForDomain", domain: currentDomain },
+        (response) => {
+          if (response && Array.isArray(response.data) && response.data.length > 0) {
+            localStorageData.value = JSON.stringify(response.data);
+          } else {
+            localStorageData.value = 'No data found for this key.';
+          }
+        }
+      );
     }
   });
 };
 
-watch(currentTab, (newTab) => {
-  if (newTab === 'accesses') {
-    fetchLocalStorageData();
-  }
-  if (newTab === 'trackers') {
-    chrome.runtime.sendMessage({ action: "getTrackers" }, (response) => {
-      if (response) {
-        // totalCount.value = response.detectedTrackers.length;
-        uniqueParentDomains.value = response.uniqueDomainsCount;
-        uniqueTrackers.value = response.uniqueTrackersCount;
-      } else {
-        console.error("No tracker data received.");
-      }
-    });
-  }
-});
-const getHighlightClass = (item: string) => {
-  // High Privacy Concern - Red
-  const highPrivacy = [
-    'navigator.deviceMemory',
-    'navigator.hardwareConcurrency',
-    'navigator.geolocation',
-    'document.cookie',
-    'window.localStorage',
-    'window.sessionStorage',
-    'window.indexedDB',
-  ];
-
-  // Medium Privacy Concern - Orange
-  const mediumPrivacy = [
-    'navigator.appVersion',
-    'navigator.platform',
-    'navigator.vendor',
-    'navigator.languages',
-    'navigator.maxTouchPoints',
-    'screen.width',
-    'screen.height',
-    'navigator.connection',
-  ];
-
-  // Lower Privacy Concern - Yellow
-  const lowerPrivacy = [
-    'navigator.onLine',
-    'screen.orientation.type',
-    'document.hasFocus',
-    'navigator.getBattery',
-  ];
-
-  if (highPrivacy.some(attr => item.includes(attr))) {
-    return 'highlight-red'; // High privacy concern
-  }
-  if (mediumPrivacy.some(attr => item.includes(attr))) {
-    return 'highlight-orange'; // Medium privacy concern
-  }
-  if (lowerPrivacy.some(attr => item.includes(attr))) {
-    return 'highlight-yellow'; // Lower privacy concern
-  }
-  return ''; // Default, no additional class
-};
+// Property risk tier matches dashboard semantics; used to color-code list items
+// so users can see *what kind* of access they're looking at, not just a flat list.
+const HIGH_RISK_PROPS = [
+  'navigator.deviceMemory', 'navigator.hardwareConcurrency', 'navigator.geolocation',
+  'document.cookie', 'window.localStorage', 'window.sessionStorage', 'window.indexedDB',
+  'HTMLCanvasElement.prototype.getContext', 'CanvasRenderingContext2D.prototype.measureText',
+  'WebGLRenderingContext.prototype.getParameter', 'AudioContext.prototype.createOscillator'
+];
+const MEDIUM_RISK_PROPS = [
+  'navigator.appVersion', 'navigator.platform', 'navigator.vendor', 'navigator.languages',
+  'navigator.maxTouchPoints', 'navigator.connection', 'screen.width', 'screen.height',
+  'screen.colorDepth', 'screen.pixelDepth', 'Date.prototype.getTimezoneOffset',
+  'Intl.DateTimeFormat().resolvedOptions().timeZone'
+];
+function propertyRiskTier(prop: string): 'high' | 'medium' | 'low' {
+  if (HIGH_RISK_PROPS.some(p => prop.includes(p)) || prop.startsWith('WebGLRenderingContext')) return 'high';
+  if (MEDIUM_RISK_PROPS.some(p => prop.includes(p))) return 'medium';
+  return 'low';
+}
 
 const openDashboard = () => {
   chrome.tabs.create({ url: 'dashboard.html' });
 };
 
-function showDescriptioh(e:any) {
-  console.log(e)
-  console.log(e.target.nextElementSibling.style.display = 'block')
-  // document.getElementBy(`topTrackersChart`).style.display = 'block';
+const openSettings = () => {
+  chrome.tabs.create({ url: 'dashboard.html#/settings' });
+};
 
-}
-
-function hideDescriptioh(e:any) {
-  console.log(e)
-  console.log(e.target.nextElementSibling.style.display = 'none')
-  // document.getElementBy(`topTrackersChart`).style.display = 'block';
-
-}
-
-// Computed property to parse the local storage data into an array
+// Parsed + risk-decorated + sorted: high-risk accesses surface first so
+// scanning the list answers "what's the worst thing this site looked at" fast.
 const parsedLocalStorageData = computed(() => {
-  if (localStorageData.value) {
-    try {
-      const data = JSON.parse(localStorageData.value);
-      return data.map((item: { isThirdParty: any; }) => ({
-        ...item,
-        isThirdParty: Array.isArray(item.isThirdParty) ? item.isThirdParty : [],
-      }));
-    } catch (e) {
-      console.error("Error parsing localStorageData:", e);
-      return []; // Return an empty array if parsing fails
-    }
+  if (!localStorageData.value) return [];
+  try {
+    const data = JSON.parse(localStorageData.value);
+    const tierWeight: Record<string, number> = { high: 0, medium: 1, low: 2 };
+    return data
+      .map((item: { property: string; isThirdParty: any }) => {
+        const tier = propertyRiskTier(item.property);
+        const isThirdParty = Array.isArray(item.isThirdParty) ? item.isThirdParty : [];
+        return { ...item, isThirdParty, tier };
+      })
+      .sort((a: any, b: any) => {
+        const w = tierWeight[a.tier] - tierWeight[b.tier];
+        if (w !== 0) return w;
+        // Third-party access first within a tier — that's the more concerning case.
+        const at = a.isThirdParty.includes(true) ? 0 : 1;
+        const bt = b.isThirdParty.includes(true) ? 0 : 1;
+        return at - bt;
+      });
+  } catch (e) {
+    return [];
   }
-  return [];
 });
 
 

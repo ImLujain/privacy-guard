@@ -24,3 +24,7 @@ pnpm-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# research/benchmark artifacts — never push (398MB, bundled Chromium, exports)
+/experiments/
+.claude/

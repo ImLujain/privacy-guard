@@ -21,9 +21,11 @@
           <label for="profileSelect" class="selector-label">Choose a device fingerprint:</label>
           <select id="profileSelect" v-model="selectedProfile" @change="handleProfileChange" class="profile-select">
             <option value="allProfiles">🔓 Real Identity (No Protection)</option>
-            <option value="profile1">🖥️ Windows Desktop</option>
-            <option value="profile2">💻 MacBook Air</option>
-            <option value="profile3">📱 iPhone</option>
+            <option value="profile1">🖥️ Windows Desktop (Chrome)</option>
+            <option value="profile2">💻 MacBook (Safari)</option>
+            <option value="profile3">📱 iPhone (Safari)</option>
+            <option value="profile4">🖥️ Windows Desktop (Edge)</option>
+            <option value="profile5">📱 Android Phone (Chrome)</option>
           </select>
         </div>
       </div>
@@ -180,27 +182,43 @@ const profilesData = {
     plugins: 'Your Real Plugins'
   },
   profile1: {
-    name: 'Windows Desktop',
+    name: 'Windows Desktop (Chrome)',
     deviceType: 'Desktop',
-    userAgent: 'Chrome 131',
+    userAgent: 'Chrome 147',
     screenSize: '1920 x 1080',
     cpuCores: '8 cores',
     plugins: '5 plugins'
   },
   profile2: {
-    name: 'MacBook Air',
+    name: 'MacBook (Safari)',
     deviceType: 'Laptop',
-    userAgent: 'Safari 17.6',
-    screenSize: '1440 x 900',
+    userAgent: 'Safari 26',
+    screenSize: '1470 x 956',
     cpuCores: '8 cores',
-    plugins: '2 plugins'
+    plugins: '5 plugins'
   },
   profile3: {
-    name: 'iPhone',
+    name: 'iPhone (Safari)',
     deviceType: 'Mobile',
-    userAgent: 'iOS 17.6',
-    screenSize: '390 x 844',
+    userAgent: 'iOS 18.7 (Safari 26)',
+    screenSize: '414 x 896',
     cpuCores: '6 cores',
+    plugins: '5 plugins'
+  },
+  profile4: {
+    name: 'Windows Desktop (Edge)',
+    deviceType: 'Desktop',
+    userAgent: 'Edge 147',
+    screenSize: '2560 x 1440',
+    cpuCores: '16 cores',
+    plugins: '5 plugins'
+  },
+  profile5: {
+    name: 'Android Phone (Chrome)',
+    deviceType: 'Mobile',
+    userAgent: 'Chrome 145 (Android)',
+    screenSize: '412 x 906',
+    cpuCores: '8 cores',
     plugins: '0 plugins'
   }
 };

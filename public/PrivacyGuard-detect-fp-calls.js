@@ -84,36 +84,38 @@ function getDomain() {
     return window.location.hostname;
 }
 
-function saveAccessToLocalStorage(property, domain, isThirdParty) {
-    const localStorageKey = `accessedProperties_${domain}`;
-    let accessedProperties = JSON.parse(localStorage.getItem(localStorageKey)) || [];
+// Event-level log: every access becomes a record (no dedupe across timestamps).
+// We're in the page (MAIN) world so chrome.runtime is unreachable — events get
+// posted to window and the isolated-world content script forwards them.
+// Batched + flushed periodically so per-getter overhead stays bounded.
+const __pgFpQueue = [];
+let __pgFpFlushTimer = null;
 
-    console.log(`Current accessed properties for ${domain}:`, accessedProperties);
-
-    // Attempt to find the property in the existing list
-    let propertyObject = accessedProperties.find(item => item.property === property);
-
-    if (!propertyObject) {
-        // If the property doesn't exist, create a new entry with isThirdParty as an array
-        propertyObject = { property, isThirdParty: [isThirdParty] };
-        accessedProperties.push(propertyObject);
-    } else {
-        // Ensure isThirdParty is treated as an array, correcting it if necessary
-        if (!Array.isArray(propertyObject.isThirdParty)) {
-            propertyObject.isThirdParty = [];
-        }
-
-        // Now safely use .includes() as isThirdParty is guaranteed to be an array
-        if (!propertyObject.isThirdParty.includes(isThirdParty)) {
-            propertyObject.isThirdParty.push(isThirdParty);
-        }
+function __pgFpFlush() {
+    __pgFpFlushTimer = null;
+    if (__pgFpQueue.length === 0) return;
+    const batch = __pgFpQueue.splice(0, __pgFpQueue.length);
+    try {
+        window.postMessage({ __pgFp: true, type: 'propertyAccess', events: batch }, '*');
+    } catch (e) {
+        // Drop on failure — the content script will pick up subsequent batches.
     }
-
-    // Update local storage
-    localStorage.setItem(localStorageKey, JSON.stringify(accessedProperties));
-
-    console.log(`Updated accessed properties for ${domain}:`, accessedProperties);
 }
+
+function saveAccessToLocalStorage(property, domain, isThirdParty) {
+    __pgFpQueue.push({
+        property,
+        domain,
+        isThirdParty: !!isThirdParty,
+        timestamp: new Date().toISOString()
+    });
+    if (!__pgFpFlushTimer) {
+        __pgFpFlushTimer = setTimeout(__pgFpFlush, 500);
+    }
+}
+
+window.addEventListener('pagehide', __pgFpFlush);
+window.addEventListener('beforeunload', __pgFpFlush);
 
 
 // Counter to track how many times each property was accessed
@@ -213,13 +215,18 @@ function monitorAccess(obj, property, handler) {
 // Function to set up monitoring for all properties in deviceInfoProperties
 function setupDeviceInfoMonitoring() {
     deviceInfoProperties.forEach(prop => {
-        monitorAccess(window, prop, (accessedProperty, origin) => {
-            console.log(`Accessed: ${accessedProperty} from: ${origin}`);
-            // Inside monitorAccess or a similar place where you log the access
-            const originInfo = getCurrentScriptOrigin();
-            saveAccessToLocalStorage(accessedProperty, getDomain(), originInfo.isThirdParty);
-            //saveAccessToLocalStorage(accessedProperty, getDomain());
-        });
+        // Each property is instrumented independently: reading or redefining a
+        // property can throw (SecurityError in sandboxed frames; TypeError when
+        // a randomization profile has locked it), and one failure must not
+        // abort instrumentation of the remaining properties.
+        try {
+            monitorAccess(window, prop, (accessedProperty, origin) => {
+                const originInfo = getCurrentScriptOrigin();
+                saveAccessToLocalStorage(accessedProperty, getDomain(), originInfo.isThirdParty);
+            });
+        } catch (e) {
+            console.warn(`PrivacyGuard: could not instrument ${prop}:`, e && e.message);
+        }
     });
 }
 // Start the monitoring process

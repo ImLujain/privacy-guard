@@ -1,33 +1,35 @@
 {
     "manifest_version": 3,
-    "name": "Tracker Detector",
-    "description": "Detects web trackers and modifies User-Agent.",
+    "name": "PrivacyGuard",
+    "description": "Detects web trackers, audits browser fingerprinting access, and randomizes device identifiers.",
     "version": "0.0.1",
     "icons":{
-        "128":"./logo.png",
-        "64":"./logo.png",
-        "32":"./logo.png",
-        "16":"./logo.png"
+        "128":"./logo-128.png",
+        "48":"./logo-48.png",
+        "32":"./logo-32.png",
+        "16":"./logo-16.png"
     },
     "background": {
         "service_worker": "/background.js"
     },
     "action": {
-        "default_popup": "popup.html"
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "./logo-16.png",
+            "32": "./logo-32.png",
+            "48": "./logo-48.png",
+            "128": "./logo-128.png"
+        }
     },
     "content_scripts": [
         {
-            "matches": [
-                "<all_urls>"
-            ],
-            "js": [
-                "/content.js"
-            ],
+            "matches": ["<all_urls>"],
+            "js": ["/content.js"],
             "run_at": "document_start"
         }
     ],
     "web_accessible_resources": [{
-        "resources": ["randomize-user-data.js", "PrivacyGuard-detect-fp-calls.js", "anti-detection.js", "profile1.js", "profile2.js", "profile3.js"],
+        "resources": ["PrivacyGuard-detect-fp-calls.js", "anti-detection.js", "profile1.js", "profile2.js", "profile3.js", "profile4.js", "profile5.js"],
         "matches": ["<all_urls>"]
     }],
     "permissions": [
@@ -35,6 +37,7 @@
         "declarativeNetRequestWithHostAccess", 
         "declarativeNetRequestFeedback",
         "storage",
+        "unlimitedStorage",
         "tabs",
         "scripting",
         "webRequest",
