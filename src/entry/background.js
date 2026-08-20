@@ -311,6 +311,11 @@ chrome.runtime.onMessage.addListener(
                     const profile = data.selectedProfile || 'allProfiles';
                     for (const ev of batch) {
                         events.push({
+                            // Monotonic per-event sequence number (array index at
+                            // insertion). Lets analysts distinguish N same-millisecond
+                            // accesses from duplicated log rows — timestamps alone
+                            // cannot (ms resolution; rapid polling is common).
+                            seq: events.length,
                             domain: ev.domain,
                             property: ev.property,
                             isThirdParty: !!ev.isThirdParty,

@@ -361,11 +361,11 @@ async function exportCsv() {
     });
 
     const accessHeaders = [
-      'domain', 'timestamp', 'property', 'is_third_party',
+      'seq', 'domain', 'timestamp', 'property', 'is_third_party',
       'experiment_mode', 'profile'
     ];
     const accessRows = data.propertyAccess.map((a: any) => [
-      a.domain, a.timestamp, a.property, a.isThirdParty ? 'true' : 'false',
+      a.seq ?? '', a.domain, a.timestamp, a.property, a.isThirdParty ? 'true' : 'false',
       a.experimentMode || '', a.profile || ''
     ]);
 
