@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "PrivacyGuard: A Local-First Browser Extension for Web Tracking Transparency and Fingerprint Exposure Reduction"
+type: software
+authors:
+  - family-names: Abuhaimed
+    given-names: Lujain
+version: "1.0.0"
+date-released: "2026-08-21"
+repository-code: "https://github.com/ImLujain/privacy-guard"
+license: MIT
+keywords:
+  - browser extension
+  - web tracking
+  - browser fingerprinting
+  - privacy
+  - Manifest V3
