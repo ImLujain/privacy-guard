@@ -7,6 +7,7 @@ authors:
     given-names: Lujain
 version: "1.0.0"
 date-released: "2026-08-21"
+doi: 10.5281/zenodo.22048255
 repository-code: "https://github.com/ImLujain/privacy-guard"
 license: MIT
 keywords:

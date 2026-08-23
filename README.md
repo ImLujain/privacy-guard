@@ -1,5 +1,7 @@
 # PrivacyGuard
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22048255.svg)](https://doi.org/10.5281/zenodo.22048255)
+
 PrivacyGuard is a local-first Chrome extension that makes web tracking and
 browser fingerprinting **visible**. It detects trackers, audits which browser
 properties page scripts read, and can optionally randomize the browser's
@@ -56,3 +58,9 @@ PrivacyGuard is the artifact of an academic study of tracking visibility and
 fingerprint mitigation. The website-benchmark dataset and the analysis script
 that reproduces the paper's statistics are distributed as a separate
 reproducibility package alongside the paper.
+
+## Citation and archives
+
+- Software archive (this repository, release v1.0.0): https://doi.org/10.5281/zenodo.22048255
+- Benchmark dataset and analysis script (Experiment A): https://doi.org/10.5281/zenodo.22050278
+- Exact code that ran the benchmark: tag `benchmark-2026-08-18`
