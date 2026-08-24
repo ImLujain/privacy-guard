@@ -15,10 +15,10 @@ fingerprint — while keeping every byte of collected data on the user's device.
 - **Property-access auditor** — intercepts reads of privacy-sensitive browser
   properties (`document.cookie`, canvas/WebGL APIs, `navigator.*`, screen
   metrics, timezone, and more) and logs which party accessed what, when.
-- **Fingerprint randomization** — five realistic device profiles (stratified
-  conditional random sampling) that spoof navigator/screen properties, apply
-  session-seeded canvas and audio noise, and set a matching User-Agent via
-  `declarativeNetRequest`.
+- **Fingerprint randomization** — five fixed, hand-authored device profiles
+  (validated against real 2026 browser builds) that substitute navigator/screen
+  properties, apply session-seeded canvas and audio noise, and set a matching
+  User-Agent via `declarativeNetRequest`.
 - **Popup & dashboard** — per-site view of accessed properties and trackers,
   a cross-session history dashboard with risk insights, and local JSON/CSV
   export.

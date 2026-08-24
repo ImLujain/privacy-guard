@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: "PrivacyGuard: A Local-First Browser Extension for Web Tracking Transparency and Fingerprint Exposure Reduction"
+title: "PrivacyGuard: A Local-First Browser Extension for Web Tracking Transparency and Fingerprint Attribute Substitution"
 type: software
 authors:
   - family-names: Abuhaimed
